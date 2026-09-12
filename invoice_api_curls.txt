@@ -1,0 +1,84 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ANIMEX INVOICE API CURLS (BASE URL: https://animex-pharma-backend.onrender.com)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 1. CREATE A NEW INVOICE
+# Auto-calculates: subtotal, taxable_amount, gst_amount, grand_total, round_off, balance_due, and status.
+curl -X POST "https://animex-pharma-backend.onrender.com/client/CLIENT_ID/invoices" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "medical_store_id": "MEDICAL_STORE_ID",
+    "date": "2026-08-18T10:00:00.000Z",
+    "discount": 100.00,
+    "received_amount": 5000.00,
+    "payment_type": "UPI",
+    "notes": "Thank you for doing business with us.",
+    "items": [
+      {
+        "product_title": "Animex Liv 10t",
+        "quantity": 10,
+        "unit": "Ltr",
+        "mrp": 312.80,
+        "selling_price": 312.80,
+        "is_free": false
+      },
+      {
+        "product_title": "Milkymex D5 (10kg)",
+        "quantity": 1,
+        "unit": "Bucket",
+        "mrp": 0.00,
+        "selling_price": 0.00,
+        "is_free": true
+      }
+    ]
+  }'
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 2. GET ALL INVOICES
+# Scoped and filtered by Client ID.
+curl -X GET "https://animex-pharma-backend.onrender.com/client/CLIENT_ID/invoices" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 3. GET INVOICE BY ID
+# Scoped and filtered by Client ID.
+curl -X GET "https://animex-pharma-backend.onrender.com/client/CLIENT_ID/invoices/INVOICE_ID" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 4. UPDATE INVOICE
+# Scoped and filtered by Client ID.
+curl -X PUT "https://animex-pharma-backend.onrender.com/client/CLIENT_ID/invoices/INVOICE_ID" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "discount": 150.00,
+    "received_amount": 6000.00,
+    "payment_type": "Cash"
+  }'
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 5. DOWNLOAD INVOICE PDF
+# Generates and downloads the supply invoice as an A4 PDF document.
+curl -X GET "https://animex-pharma-backend.onrender.com/client/CLIENT_ID/invoices/INVOICE_ID/pdf" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --output invoice.pdf
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 6. PREVIEW INVOICE HTML
+# Renders the formatted supply invoice directly inside browser as HTML.
+curl -X GET "https://animex-pharma-backend.onrender.com/client/CLIENT_ID/invoices/INVOICE_ID/preview" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 7. DELETE INVOICE
+# Scoped and filtered by Client ID.
+curl -X DELETE "https://animex-pharma-backend.onrender.com/client/CLIENT_ID/invoices/INVOICE_ID" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"

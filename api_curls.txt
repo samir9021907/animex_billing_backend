@@ -1,0 +1,223 @@
+# ==============================================================================
+# ANIMEX PHARMA BACKEND - API CURLS REFERENCE
+# Base URL: https://animex-pharma-backend.onrender.com
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. AUTHENTICATION MODULE (/auth)
+# ------------------------------------------------------------------------------
+
+# 1.1 Client Signup / Registration
+curl --location 'https://animex-pharma-backend.onrender.com/auth/signup' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name": "Apollo Pharmacy",
+    "email": "contact@apollopharmacy.com",
+    "phone": "+919876543210",
+    "address": "123 Main Medical Street",
+    "city": "Mumbai"
+}'
+
+# 1.2 Client Login
+curl --location 'https://animex-pharma-backend.onrender.com/auth/login' \
+--header 'Content-Type: application/json' \
+--data '{
+    "email": "contact@apollopharmacy.com"
+}'
+
+
+# ------------------------------------------------------------------------------
+# 2. CLIENT MODULE (/client)
+# ------------------------------------------------------------------------------
+
+# 2.1 Create Client (No Token Required)
+curl --location 'https://animex-pharma-backend.onrender.com/client/clients' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name": "Apollo Pharmacy",
+    "email": "contact@apollopharmacy.com",
+    "phone": "+919876543210",
+    "address": "123 Main Medical Street",
+    "city": "Mumbai",
+    "status": "active"
+}'
+
+# 2.2 Get All Clients (No Token Required)
+curl --location 'https://animex-pharma-backend.onrender.com/client/clients'
+
+# 2.3 Get Client By ID (Requires Authorization Header)
+curl --location 'https://animex-pharma-backend.onrender.com/client/clients/CLIENT_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 2.4 Update Client (Requires Authorization Header)
+curl --location --request PUT 'https://animex-pharma-backend.onrender.com/client/clients/CLIENT_ID' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "name": "Apollo Pharmacy Pvt Ltd",
+    "phone": "+919876543211",
+    "status": "active"
+}'
+
+# 2.5 Delete Client (Requires Authorization Header)
+curl --location --request DELETE 'https://animex-pharma-backend.onrender.com/client/clients/CLIENT_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+
+# ------------------------------------------------------------------------------
+# 3. USER MODULE (/user)
+# ------------------------------------------------------------------------------
+
+# 3.1 Create User for Client (No Token Required)
+curl --location 'https://animex-pharma-backend.onrender.com/user/client/CLIENT_ID/users' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name": "John Doe",
+    "email": "johndoe@apollopharmacy.com",
+    "password": "Password123",
+    "phone": "+919876543212",
+    "role": "businessowner",
+    "enabled": true
+}'
+
+# 3.2 Get All Users for Client (Requires Authorization Header)
+curl --location 'https://animex-pharma-backend.onrender.com/user/client/CLIENT_ID/users' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 3.3 Get User By ID (Requires Authorization Header)
+curl --location 'https://animex-pharma-backend.onrender.com/user/client/CLIENT_ID/users/USER_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 3.4 Update User (Requires Authorization Header)
+curl --location --request PUT 'https://animex-pharma-backend.onrender.com/user/client/CLIENT_ID/users/USER_ID' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "name": "John Updated Doe",
+    "phone": "+919876543299",
+    "role": "admin",
+    "enabled": true
+}'
+
+# 3.5 Delete User (Requires Authorization Header)
+curl --location --request DELETE 'https://animex-pharma-backend.onrender.com/user/client/CLIENT_ID/users/USER_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+
+# ------------------------------------------------------------------------------
+# 4. PRODUCT CATEGORY MODULE (/product-category)
+# ------------------------------------------------------------------------------
+
+# 4.1 Create Product Category
+curl --location 'https://animex-pharma-backend.onrender.com/product-category/client/CLIENT_ID/product-categories' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "category_name": "Antibiotics",
+    "category_code": "CAT-ANT-001",
+    "description": "Category for antibiotic medicine products",
+    "status": true
+}'
+
+# 4.2 Get All Product Categories
+curl --location 'https://animex-pharma-backend.onrender.com/product-category/client/CLIENT_ID/product-categories' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 4.3 Get Product Category By ID
+curl --location 'https://animex-pharma-backend.onrender.com/product-category/client/CLIENT_ID/product-categories/CATEGORY_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 4.4 Update Product Category
+curl --location --request PUT 'https://animex-pharma-backend.onrender.com/product-category/client/CLIENT_ID/product-categories/CATEGORY_ID' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "category_name": "General Antibiotics",
+    "description": "Updated category description",
+    "status": true
+}'
+
+# 4.5 Delete Product Category
+curl --location --request DELETE 'https://animex-pharma-backend.onrender.com/product-category/client/CLIENT_ID/product-categories/CATEGORY_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+
+# ------------------------------------------------------------------------------
+# 5. MEDICAL PRODUCT MODULE (/medical-product)
+# ------------------------------------------------------------------------------
+
+# 5.1 Create Medical Product
+# Units allowed: "Ltr", "ml", "Kg", "gm", "Piece", "Box", "Bottle", "Strip", "Tablet"
+curl --location 'https://animex-pharma-backend.onrender.com/medical-product/client/CLIENT_ID/medical-products' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "category_id": "CATEGORY_ID",
+    "product_title": "Amoxicillin 500mg Capsule",
+    "unit": "Strip",
+    "mrp": 120.00,
+    "selling_price": 95.50,
+    "status": true
+}'
+
+# 5.2 Get All Medical Products (Support filters: category_id, product_title, status)
+curl --location 'https://animex-pharma-backend.onrender.com/medical-product/client/CLIENT_ID/medical-products' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 5.3 Get Medical Product By ID
+curl --location 'https://animex-pharma-backend.onrender.com/medical-product/client/CLIENT_ID/medical-products/PRODUCT_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 5.4 Update Medical Product
+curl --location --request PUT 'https://animex-pharma-backend.onrender.com/medical-product/client/CLIENT_ID/medical-products/PRODUCT_ID' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "product_title": "Amoxicillin 500mg Extra Capsule",
+    "selling_price": 90.00,
+    "status": true
+}'
+
+# 5.5 Delete Medical Product
+curl --location --request DELETE 'https://animex-pharma-backend.onrender.com/medical-product/client/CLIENT_ID/medical-products/PRODUCT_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+
+# ------------------------------------------------------------------------------
+# 6. MEDICAL STORE MODULE (/medical-store)
+# ------------------------------------------------------------------------------
+
+# 6.1 Create Medical Store
+curl --location 'https://animex-pharma-backend.onrender.com/medical-store/client/CLIENT_ID/medical-stores' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "firm_name": "Apollo Pharmacy Branch 1",
+    "contact_person_name": "Dr. Rajesh Sharma",
+    "phone_number": "+919876543210",
+    "district": "Mumbai Suburban",
+    "address": "Shop 4, Sunrise Plaza, Andheri East, Mumbai",
+    "status": true
+}'
+
+# 6.2 Get All Medical Stores (Support filters: firm_name, district, status)
+curl --location 'https://animex-pharma-backend.onrender.com/medical-store/client/CLIENT_ID/medical-stores' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 6.3 Get Medical Store By ID
+curl --location 'https://animex-pharma-backend.onrender.com/medical-store/client/CLIENT_ID/medical-stores/STORE_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
+
+# 6.4 Update Medical Store
+curl --location --request PUT 'https://animex-pharma-backend.onrender.com/medical-store/client/CLIENT_ID/medical-stores/STORE_ID' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN' \
+--data '{
+    "firm_name": "Apollo Pharmacy Main Branch",
+    "phone_number": "+919876543299",
+    "status": true
+}'
+
+# 6.5 Delete Medical Store
+curl --location --request DELETE 'https://animex-pharma-backend.onrender.com/medical-store/client/CLIENT_ID/medical-stores/STORE_ID' \
+--header 'Authorization: Bearer YOUR_JWT_TOKEN'
