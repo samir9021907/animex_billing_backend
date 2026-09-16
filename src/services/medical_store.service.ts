@@ -5,9 +5,23 @@ class MedicalStoreService {
 
     // CREATE
     async createStore(data: any) {
+        if (data.client_id && data.firm_name) {
+            const existing = await MedicalStoreModel.findOne({
+                where: {
+                    client_id: data.client_id,
+                    firm_name: {
+                        [Op.iLike]: data.firm_name.trim()
+                    }
+                }
+            });
+            if (existing) {
+                return existing;
+            }
+        }
+
         const store = await MedicalStoreModel.create({
             client_id: data.client_id,
-            firm_name: data.firm_name,
+            firm_name: data.firm_name ? data.firm_name.trim() : data.firm_name,
             contact_person_name: data.contact_person_name ?? null,
             phone_number: data.phone_number,
             district: data.district,
