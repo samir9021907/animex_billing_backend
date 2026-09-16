@@ -3,6 +3,7 @@ import MedicalStoreModel from "../models/medical_store.model";
 import ClientModel from "../models/client.model";
 import MedicalProductModel from "../models/medical_product.model";
 import { Op } from "sequelize";
+import sequelize from "../config/db";
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
@@ -74,12 +75,19 @@ class InvoiceService {
     // CREATE INVOICE
     async createInvoice(data: any) {
         // Store the company-wise sequence once; the global id is independent.
-        const maxCompanyInvoiceNumber: any = await InvoiceModel.max("company_invoice_number", {
-            where: { medical_store_id: data.medical_store_id }
-        });
-        const companyInvoiceNumber = data.company_invoice_number || (Number(maxCompanyInvoiceNumber) || 0) + 1;
-        const maxGlobalBillId: any = await InvoiceModel.max("global_bill_id");
-        const globalBillId = data.global_bill_id || (Number(maxGlobalBillId) || 0) + 1;
+        // Use raw SQL to include soft-deleted records and prevent unique constraint collisions
+        const [storeMaxRow]: any = await sequelize.query(
+            'SELECT COALESCE(MAX(company_invoice_number), 0) AS max_store_cin FROM invoices WHERE medical_store_id = :storeId',
+            { replacements: { storeId: data.medical_store_id } }
+        );
+        const maxStoreCin = Number(storeMaxRow?.[0]?.max_store_cin || 0);
+        const companyInvoiceNumber = Number(data.company_invoice_number) || (maxStoreCin + 1);
+
+        const [globalMaxRow]: any = await sequelize.query(
+            'SELECT COALESCE(MAX(global_bill_id), 0) AS max_gbid FROM invoices'
+        );
+        const maxGbid = Number(globalMaxRow?.[0]?.max_gbid || 0);
+        const globalBillId = Math.max(Number(data.global_bill_id) || 0, maxGbid + 1);
         const invoiceNumber = data.invoice_number || `#${companyInvoiceNumber}`;
 
         // Calculate totals
