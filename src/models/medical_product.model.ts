@@ -7,10 +7,12 @@ class MedicalProductModel extends Model {
     public client_id!: string;
     public category_id!: string;
     public product_title!: string;
-    public unit!: "Ltr" | "ml" | "Kg" | "gm" | "Piece" | "Box" | "Bottle" | "Strip" | "Tablet";
+    public unit!: string;
     public mrp!: number;
     public selling_price!: number;
     public quantity!: number;
+    public box_capacity!: number;
+    public min_stock_alert!: number;
     public status!: boolean;
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
@@ -48,13 +50,19 @@ MedicalProductModel.init(
             type: DataTypes.ENUM(
                 "Ltr",
                 "ml",
+                "Ml",
                 "Kg",
                 "gm",
                 "Piece",
                 "Box",
                 "Bottle",
                 "Strip",
-                "Tablet"
+                "Tablet",
+                "Bucket",
+                "Can",
+                "Pack",
+                "Drum",
+                "Bag"
             ),
             allowNull: false,
         },
@@ -70,6 +78,16 @@ MedicalProductModel.init(
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 0,
+        },
+        box_capacity: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: 50,
+        },
+        min_stock_alert: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: 50,
         },
         status: {
             type: DataTypes.BOOLEAN,
