@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import productCategoryService from "../services/product_category.service";
+import { validateString } from "../utils/validation.util";
 
 class ProductCategoryController {
 
@@ -7,8 +8,19 @@ class ProductCategoryController {
     async createCategory(request: FastifyRequest, reply: FastifyReply) {
         try {
             const { client_id } = request.params as { client_id: string };
+            const payload = (request.body as any) || {};
+
+            const catVal = validateString(payload.category_name, "Category Name (कॅटेगरीचे नाव)", 2, 100, true);
+            if (!catVal.isValid) {
+                return reply.code(400).send({
+                    success: false,
+                    message: catVal.error,
+                });
+            }
+
             const body = {
-                ...(request.body as any),
+                ...payload,
+                category_name: catVal.value,
                 client_id,
             };
 
@@ -83,12 +95,22 @@ class ProductCategoryController {
     async updateCategory(request: FastifyRequest, reply: FastifyReply) {
         try {
             const { id, client_id } = request.params as { id: string; client_id: string };
-            const body = {
-                ...(request.body as any),
-                client_id,
-            };
+            const payload = (request.body as any) || {};
+            const updateBody: any = { client_id };
 
-            const category = await productCategoryService.updateCategory(id, body);
+            if (payload.category_name !== undefined) {
+                const catVal = validateString(payload.category_name, "Category Name", 2, 100, true);
+                if (!catVal.isValid) {
+                    return reply.code(400).send({ success: false, message: catVal.error });
+                }
+                updateBody.category_name = catVal.value;
+            }
+
+            if (payload.category_code !== undefined) updateBody.category_code = payload.category_code;
+            if (payload.description !== undefined) updateBody.description = payload.description;
+            if (payload.status !== undefined) updateBody.status = payload.status;
+
+            const category = await productCategoryService.updateCategory(id, updateBody);
 
             if (!category) {
                 return reply.code(404).send({

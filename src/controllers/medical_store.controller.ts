@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import medicalStoreService from "../services/medical_store.service";
+import { validatePhoneNumber, validateString } from "../utils/validation.util";
 
 class MedicalStoreController {
 
@@ -7,9 +8,43 @@ class MedicalStoreController {
     async createStore(request: FastifyRequest, reply: FastifyReply) {
         try {
             const { client_id } = request.params as { client_id: string };
+            const payload = (request.body as any) || {};
+
+            // 1. Validate Firm Name
+            const firmValidation = validateString(payload.firm_name, "Firm Name (मेडिकल स्टोअरचे नाव)", 2, 200, true);
+            if (!firmValidation.isValid) {
+                return reply.code(400).send({
+                    success: false,
+                    message: firmValidation.error
+                });
+            }
+
+            // 2. Validate Phone Number (must be exactly 10 digits starting with 6, 7, 8, 9)
+            const phoneValidation = validatePhoneNumber(payload.phone_number, "Phone Number (फोन नंबर)", true);
+            if (!phoneValidation.isValid) {
+                return reply.code(400).send({
+                    success: false,
+                    message: phoneValidation.error
+                });
+            }
+
+            // 3. Optional Contact Person Name
+            const contactValidation = validateString(payload.contact_person_name, "Contact Person Name", 2, 100, false);
+            if (!contactValidation.isValid) {
+                return reply.code(400).send({
+                    success: false,
+                    message: contactValidation.error
+                });
+            }
+
             const body = {
-                ...(request.body as any),
+                ...payload,
                 client_id,
+                firm_name: firmValidation.value,
+                phone_number: phoneValidation.value,
+                contact_person_name: contactValidation.value || null,
+                district: payload.district ? String(payload.district).trim() : "Maharashtra",
+                address: payload.address ? String(payload.address).trim() : null,
             };
 
             const store = await medicalStoreService.createStore(body);
@@ -83,12 +118,46 @@ class MedicalStoreController {
     async updateStore(request: FastifyRequest, reply: FastifyReply) {
         try {
             const { id, client_id } = request.params as { id: string; client_id: string };
-            const body = {
-                ...(request.body as any),
-                client_id,
-            };
+            const payload = (request.body as any) || {};
+            const updateBody: any = { client_id };
 
-            const store = await medicalStoreService.updateStore(id, body);
+            if (payload.firm_name !== undefined) {
+                const firmValidation = validateString(payload.firm_name, "Firm Name (मेडिकल स्टोअरचे नाव)", 2, 200, true);
+                if (!firmValidation.isValid) {
+                    return reply.code(400).send({ success: false, message: firmValidation.error });
+                }
+                updateBody.firm_name = firmValidation.value;
+            }
+
+            if (payload.phone_number !== undefined) {
+                const phoneValidation = validatePhoneNumber(payload.phone_number, "Phone Number (फोन नंबर)", true);
+                if (!phoneValidation.isValid) {
+                    return reply.code(400).send({ success: false, message: phoneValidation.error });
+                }
+                updateBody.phone_number = phoneValidation.value;
+            }
+
+            if (payload.contact_person_name !== undefined) {
+                const contactValidation = validateString(payload.contact_person_name, "Contact Person Name", 2, 100, false);
+                if (!contactValidation.isValid) {
+                    return reply.code(400).send({ success: false, message: contactValidation.error });
+                }
+                updateBody.contact_person_name = contactValidation.value || null;
+            }
+
+            if (payload.district !== undefined) {
+                updateBody.district = String(payload.district).trim();
+            }
+
+            if (payload.address !== undefined) {
+                updateBody.address = String(payload.address).trim();
+            }
+
+            if (payload.status !== undefined) {
+                updateBody.status = payload.status;
+            }
+
+            const store = await medicalStoreService.updateStore(id, updateBody);
 
             if (!store) {
                 return reply.code(404).send({

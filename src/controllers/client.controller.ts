@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import clientService from "../services/client.service";
+import { validateString, validatePhoneNumber, validateEmail } from "../utils/validation.util";
 
 class ClientController {
 
@@ -9,7 +10,40 @@ class ClientController {
         reply: FastifyReply
     ) {
         try {
-            const body = request.body as any;
+            const payload = (request.body as any) || {};
+
+            // 1. Validate Client Name
+            const nameVal = validateString(payload.name, "Client / Company Name", 2, 150, true);
+            if (!nameVal.isValid) {
+                return reply.code(400).send({ success: false, message: nameVal.error });
+            }
+
+            // 2. Validate Phone if provided
+            let phone = null;
+            if (payload.phone !== undefined && payload.phone !== null && String(payload.phone).trim() !== "") {
+                const phoneVal = validatePhoneNumber(payload.phone, "Phone Number", false);
+                if (!phoneVal.isValid) {
+                    return reply.code(400).send({ success: false, message: phoneVal.error });
+                }
+                phone = phoneVal.value;
+            }
+
+            // 3. Validate Email if provided
+            let email = null;
+            if (payload.email !== undefined && payload.email !== null && String(payload.email).trim() !== "") {
+                const emailVal = validateEmail(payload.email, "Email", false);
+                if (!emailVal.isValid) {
+                    return reply.code(400).send({ success: false, message: emailVal.error });
+                }
+                email = emailVal.value;
+            }
+
+            const body = {
+                ...payload,
+                name: nameVal.value,
+                phone,
+                email,
+            };
 
             const client = await clientService.createClient(body);
 
@@ -87,9 +121,46 @@ class ClientController {
     ) {
         try {
             const { id } = request.params as { id: string };
-            const body = request.body as any;
+            const payload = (request.body as any) || {};
+            const updateBody: any = {};
 
-            const client = await clientService.updateClient(id, body);
+            if (payload.name !== undefined) {
+                const nameVal = validateString(payload.name, "Client / Company Name", 2, 150, true);
+                if (!nameVal.isValid) {
+                    return reply.code(400).send({ success: false, message: nameVal.error });
+                }
+                updateBody.name = nameVal.value;
+            }
+
+            if (payload.phone !== undefined) {
+                if (payload.phone === null || String(payload.phone).trim() === "") {
+                    updateBody.phone = null;
+                } else {
+                    const phoneVal = validatePhoneNumber(payload.phone, "Phone Number", false);
+                    if (!phoneVal.isValid) {
+                        return reply.code(400).send({ success: false, message: phoneVal.error });
+                    }
+                    updateBody.phone = phoneVal.value;
+                }
+            }
+
+            if (payload.email !== undefined) {
+                if (payload.email === null || String(payload.email).trim() === "") {
+                    updateBody.email = null;
+                } else {
+                    const emailVal = validateEmail(payload.email, "Email", false);
+                    if (!emailVal.isValid) {
+                        return reply.code(400).send({ success: false, message: emailVal.error });
+                    }
+                    updateBody.email = emailVal.value;
+                }
+            }
+
+            if (payload.address !== undefined) updateBody.address = payload.address;
+            if (payload.city !== undefined) updateBody.city = payload.city;
+            if (payload.status !== undefined) updateBody.status = payload.status;
+
+            const client = await clientService.updateClient(id, updateBody);
 
             return reply.send({
                 success: true,
