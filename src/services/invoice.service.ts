@@ -111,7 +111,7 @@ class InvoiceService {
         });
 
         const discount = Number(data.discount || 0);
-        const gstRate = Number(data.gst_rate || 5.0); // Default 5%
+        const gstRate = data.gst_rate !== undefined ? Number(data.gst_rate) : 0.0; // Default 0% for Bill of Supply
         
         // taxable amount is subtotal - discount
         const taxableAmount = Math.max(0, subtotal - discount);
