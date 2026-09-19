@@ -161,15 +161,19 @@ class InvoiceService {
         // Reduce product stock in database
         for (const item of items) {
             const qty = Number(item.quantity || 0);
-            if (qty > 0 && item.product_title) {
+            const title = item.product_title || item.itemName || item.name;
+            if (qty > 0 && title) {
                 const product = await MedicalProductModel.findOne({
                     where: {
                         client_id: data.client_id,
-                        product_title: item.product_title
+                        [Op.or]: [
+                            { product_title: title },
+                            sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
+                        ]
                     }
                 });
                 if (product) {
-                    const newQty = Math.max(0, product.quantity - qty);
+                    const newQty = Math.max(0, (Number(product.quantity) || 0) - qty);
                     await product.update({ quantity: newQty });
                 }
             }
@@ -307,19 +311,87 @@ class InvoiceService {
             }
         );
 
+        // Adjust product stock if items updated
+        if (data.items && Array.isArray(data.items)) {
+            const oldItems = Array.isArray(invoice.items) ? invoice.items : [];
+            // 1. Add back old items stock
+            for (const item of oldItems) {
+                const qty = Number(item.quantity || 0);
+                const title = item.product_title || item.itemName || item.name;
+                if (qty > 0 && title) {
+                    const product = await MedicalProductModel.findOne({
+                        where: {
+                            client_id: invoice.client_id,
+                            [Op.or]: [
+                                { product_title: title },
+                                sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
+                            ]
+                        }
+                    });
+                    if (product) {
+                        await product.update({ quantity: (Number(product.quantity) || 0) + qty });
+                    }
+                }
+            }
+            // 2. Deduct new items stock
+            for (const item of items) {
+                const qty = Number(item.quantity || 0);
+                const title = item.product_title || item.itemName || item.name;
+                if (qty > 0 && title) {
+                    const product = await MedicalProductModel.findOne({
+                        where: {
+                            client_id: invoice.client_id,
+                            [Op.or]: [
+                                { product_title: title },
+                                sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
+                            ]
+                        }
+                    });
+                    if (product) {
+                        await product.update({ quantity: Math.max(0, (Number(product.quantity) || 0) - qty) });
+                    }
+                }
+            }
+        }
+
         return await this.getInvoiceById(id, data.client_id);
     }
 
-    // DELETE INVOICE
+    // DELETE INVOICE (Automatically restores product stock back to godown)
     async deleteInvoice(id: string, clientId?: string) {
         const whereCondition: any = { id };
         if (clientId) {
             whereCondition.client_id = clientId;
         }
 
-        await InvoiceModel.destroy({
-            where: whereCondition
-        });
+        const invoice = await InvoiceModel.findOne({ where: whereCondition });
+        if (invoice) {
+            // Restore product stock in database
+            const items = Array.isArray(invoice.items) ? invoice.items : [];
+            for (const item of items) {
+                const qty = Number(item.quantity || 0);
+                const title = item.product_title || item.itemName || item.name;
+                if (qty > 0 && title) {
+                    const product = await MedicalProductModel.findOne({
+                        where: {
+                            client_id: invoice.client_id,
+                            [Op.or]: [
+                                { product_title: title },
+                                sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
+                            ]
+                        }
+                    });
+                    if (product) {
+                        const newQty = (Number(product.quantity) || 0) + qty;
+                        await product.update({ quantity: newQty });
+                    }
+                }
+            }
+
+            await InvoiceModel.destroy({
+                where: whereCondition
+            });
+        }
 
         return true;
     }
