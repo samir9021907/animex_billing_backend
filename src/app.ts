@@ -59,6 +59,15 @@ const startServer = async () => {
     console.log("Database connected successfully.");
     await app.listen({ port: PORT, host: HOST });
     console.log(`Server listening on http://${HOST}:${PORT}`);
+
+    // 24/7 Keep-Alive Self-Ping: prevents Render free tier from sleeping after 15m of inactivity
+    const PING_INTERVAL_MS = 9 * 60 * 1000; // Ping every 9 minutes
+    setInterval(() => {
+      const pingUrl = process.env.RENDER_EXTERNAL_URL || "https://animex-billing-backend.onrender.com";
+      fetch(`${pingUrl}/health`)
+        .then(() => console.log("Render 24/7 Keep-Alive Ping Sent successfully"))
+        .catch((err) => console.warn("Keep-Alive Ping notice:", err.message));
+    }, PING_INTERVAL_MS);
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);
