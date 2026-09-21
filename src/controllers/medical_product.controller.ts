@@ -7,8 +7,17 @@ class MedicalProductController {
     // CREATE
     async createProduct(request: FastifyRequest, reply: FastifyReply) {
         try {
-            const { client_id } = request.params as { client_id: string };
+            const { client_id } = (request.params as any) || {};
             const payload = (request.body as any) || {};
+            const user = (request as any).user || {};
+            const targetClientId = client_id || payload.client_id || user.client_id;
+
+            if (!targetClientId) {
+                return reply.code(400).send({
+                    success: false,
+                    message: "client_id is required (URL parameter, body, or auth token)",
+                });
+            }
 
             // 1. Validate Product Title
             const titleValidation = validateString(payload.product_title, "Product Title (प्रॉडक्टचे नाव)", 2, 250, true);
@@ -50,7 +59,7 @@ class MedicalProductController {
 
             const body = {
                 ...payload,
-                client_id,
+                client_id: targetClientId,
                 product_title: titleValidation.value,
                 selling_price: priceValidation.value,
                 mrp: mrpValidation.value,
@@ -79,16 +88,20 @@ class MedicalProductController {
     // GET ALL
     async getAllProducts(request: FastifyRequest, reply: FastifyReply) {
         try {
-            const { client_id } = request.params as { client_id: string };
+            const { client_id } = (request.params as any) || {};
+            const queryParams = (request.query as any) || {};
+            const targetClientId = client_id || queryParams.client_id;
+
             const query = {
-                ...(request.query as any),
-                client_id,
+                ...queryParams,
+                ...(targetClientId ? { client_id: targetClientId } : {}),
             };
 
             const products = await medicalProductService.getAllProducts(query);
 
             return reply.send({
                 success: true,
+                count: products.length,
                 data: products,
             });
         } catch (error) {
@@ -103,7 +116,7 @@ class MedicalProductController {
     // GET BY ID
     async getProductById(request: FastifyRequest, reply: FastifyReply) {
         try {
-            const { id, client_id } = request.params as { id: string; client_id: string };
+            const { id, client_id } = (request.params as any) || {};
 
             const product = await medicalProductService.getProductById(id, client_id);
 
@@ -130,9 +143,9 @@ class MedicalProductController {
     // UPDATE
     async updateProduct(request: FastifyRequest, reply: FastifyReply) {
         try {
-            const { id, client_id } = request.params as { id: string; client_id: string };
+            const { id, client_id } = (request.params as any) || {};
             const payload = (request.body as any) || {};
-            const updateBody: any = { client_id };
+            const updateBody: any = client_id ? { client_id } : {};
 
             if (payload.product_title !== undefined) {
                 const titleValidation = validateString(payload.product_title, "Product Title (प्रॉडक्टचे नाव)", 2, 250, true);
@@ -212,7 +225,7 @@ class MedicalProductController {
     // DELETE
     async deleteProduct(request: FastifyRequest, reply: FastifyReply) {
         try {
-            const { id, client_id } = request.params as { id: string; client_id: string };
+            const { id, client_id } = (request.params as any) || {};
 
             const product = await medicalProductService.getProductById(id, client_id);
             if (!product) {
@@ -239,7 +252,7 @@ class MedicalProductController {
     // UPDATE QUANTITY VIA RAW SQL (As requested)
     async updateProductQuantityRaw(request: FastifyRequest, reply: FastifyReply) {
         try {
-            const { id, client_id } = request.params as { id: string; client_id: string };
+            const { id, client_id } = (request.params as any) || {};
             const { quantity } = request.body as { quantity: number };
 
             if (quantity === undefined || isNaN(quantity)) {
