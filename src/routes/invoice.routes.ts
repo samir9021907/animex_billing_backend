@@ -15,6 +15,9 @@ export default async function invoiceRoutes(fastify: FastifyInstance) {
   // GET ALL INVOICES
   fastify.get("/client/:client_id/invoices", invoiceController.getAllInvoices);
 
+  // UNIFIED FAST SYNC (STORES + INVOICES + PRODUCTS)
+  fastify.get("/client/:client_id/sync-all", invoiceController.syncAll);
+
   // GET INVOICE BY ID
   fastify.get("/client/:client_id/invoices/:id", invoiceController.getInvoiceById);
 

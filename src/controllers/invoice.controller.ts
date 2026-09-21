@@ -1,5 +1,7 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import invoiceService from "../services/invoice.service";
+import medicalStoreService from "../services/medical_store.service";
+import medicalProductService from "../services/medical_product.service";
 import { validateUUID, validateArray, validateString, validateNumber } from "../utils/validation.util";
 
 class InvoiceController {
@@ -345,6 +347,34 @@ class InvoiceController {
                 success: false,
                 message: "Error rendering invoice preview",
                 error: error.message || error
+            });
+        }
+    }
+
+    // UNIFIED FAST SYNC (Stores + Invoices + Products in 1 Parallel Query)
+    async syncAll(request: FastifyRequest, reply: FastifyReply) {
+        try {
+            const { client_id } = request.params as { client_id: string };
+            const [stores, invoices, products] = await Promise.all([
+                medicalStoreService.getAllStores({ client_id }),
+                invoiceService.getAllInvoices({ client_id }),
+                medicalProductService.getAllProducts({ client_id }),
+            ]);
+
+            return reply.send({
+                success: true,
+                data: {
+                    stores,
+                    invoices,
+                    products,
+                    serverTime: new Date().toISOString(),
+                }
+            });
+        } catch (error: any) {
+            return reply.code(500).send({
+                success: false,
+                message: "Error performing unified sync",
+                error: error.message || error,
             });
         }
     }
