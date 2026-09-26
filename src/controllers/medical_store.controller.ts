@@ -46,6 +46,7 @@ class MedicalStoreController {
                 contact_person_name: contactValidation.value || null,
                 district: payload.district ? String(payload.district).trim() : "Maharashtra",
                 address: payload.address ? String(payload.address).trim() : null,
+                customer_type: (payload.customer_type === 'customer' || payload.customerType === 'customer') ? 'customer' : 'store',
             };
 
             const store = await medicalStoreService.createStore(body);
@@ -163,6 +164,10 @@ class MedicalStoreController {
 
             if (payload.status !== undefined) {
                 updateBody.status = payload.status;
+            }
+
+            if (payload.customer_type !== undefined || payload.customerType !== undefined) {
+                updateBody.customer_type = (payload.customer_type === 'customer' || payload.customerType === 'customer') ? 'customer' : 'store';
             }
 
             const store = await medicalStoreService.updateStore(id, updateBody);

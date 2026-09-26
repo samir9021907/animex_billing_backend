@@ -89,6 +89,9 @@ class MedicalStoreService {
         if (data.status !== undefined) {
             updateData.status = data.status === "true" || data.status === true;
         }
+        if (data.customer_type !== undefined) {
+            updateData.customer_type = data.customer_type;
+        }
 
         await MedicalStoreModel.update(updateData, {
             where: data.client_id ? { id, client_id: data.client_id } : { id },

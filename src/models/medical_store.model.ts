@@ -10,6 +10,7 @@ class MedicalStoreModel extends Model {
     public district!: string;
     public address!: string;
     public status!: boolean;
+    public customer_type!: string;
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
     public readonly deleted_at!: Date | null;
@@ -54,6 +55,11 @@ MedicalStoreModel.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: true,
+        },
+        customer_type: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            defaultValue: "store",
         },
     },
     {
