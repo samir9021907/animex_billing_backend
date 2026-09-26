@@ -90,6 +90,14 @@ const startServer = async () => {
   try {
     await sequelize.authenticate();
     console.log("Database connected successfully.");
+
+    // Auto-migrate: ensure customer_type column exists on live database
+    try {
+      await sequelize.query("ALTER TABLE medical_stores ADD COLUMN IF NOT EXISTS customer_type VARCHAR(50) DEFAULT 'store';");
+      console.log("Auto-migration: customer_type column verified.");
+    } catch (err: any) {
+      console.warn("Auto-migration notice:", err.message);
+    }
     await app.listen({ port: PORT, host: HOST });
     console.log(`Server listening on http://${HOST}:${PORT}`);
 
