@@ -3,6 +3,7 @@ import invoiceService from "../services/invoice.service";
 import medicalStoreService from "../services/medical_store.service";
 import medicalProductService from "../services/medical_product.service";
 import { validateUUID, validateArray, validateString, validateNumber } from "../utils/validation.util";
+import { broadcastRealtimeEvent } from "../utils/realtime";
 
 class InvoiceController {
     // CREATE
@@ -97,6 +98,14 @@ class InvoiceController {
             };
 
             const invoice = await invoiceService.createInvoice(body);
+
+            // Instant Real-Time Push to all connected devices (mobile, laptop)
+            broadcastRealtimeEvent(client_id, {
+                type: "DATA_CHANGED",
+                entity: "invoice",
+                action: "create",
+                invoiceId: invoice?.id,
+            });
 
             return reply.code(201).send({
                 success: true,
@@ -253,6 +262,13 @@ class InvoiceController {
                 });
             }
 
+            broadcastRealtimeEvent(client_id, {
+                type: "DATA_CHANGED",
+                entity: "invoice",
+                action: "update",
+                invoiceId: id,
+            });
+
             return reply.send({
                 success: true,
                 message: "Invoice updated successfully",
@@ -281,6 +297,13 @@ class InvoiceController {
             }
 
             await invoiceService.deleteInvoice(id, client_id);
+
+            broadcastRealtimeEvent(client_id, {
+                type: "DATA_CHANGED",
+                entity: "invoice",
+                action: "delete",
+                invoiceId: id,
+            });
 
             return reply.send({
                 success: true,

@@ -11,6 +11,8 @@ import medicalProductRoutes from "./routes/medicalProduct.routes";
 import medicalStoreRoutes from "./routes/medicalStore.routes";
 import invoiceRoutes from "./routes/invoice.routes";
 
+import { addRealtimeClient, removeRealtimeClient } from "./utils/realtime";
+
 dotenv.config();
 
 export const app = Fastify({ logger: true });
@@ -43,6 +45,37 @@ app.register(productCategoryRoutes, { prefix: "/product-category" });
 app.register(medicalProductRoutes,  { prefix: "/medical-product" });
 app.register(medicalStoreRoutes,    { prefix: "/medical-store" });
 app.register(invoiceRoutes);
+
+// ─── Realtime Server-Sent Events (SSE) Live Stream ───────────────────────────
+app.get("/client/:client_id/realtime-stream", (request, reply) => {
+  const { client_id } = request.params as { client_id: string };
+  const raw = reply.raw;
+
+  raw.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "Access-Control-Allow-Origin": "*",
+  });
+  raw.write(`data: ${JSON.stringify({ type: "CONNECTED", clientId: client_id, timestamp: Date.now() })}\n\n`);
+
+  addRealtimeClient(client_id, raw);
+
+  // Keep-alive heartbeat every 20 seconds to prevent proxy / Render connection drops
+  const heartbeat = setInterval(() => {
+    try {
+      raw.write(": heartbeat\n\n");
+    } catch {
+      clearInterval(heartbeat);
+      removeRealtimeClient(client_id, raw);
+    }
+  }, 20000);
+
+  request.raw.on("close", () => {
+    clearInterval(heartbeat);
+    removeRealtimeClient(client_id, raw);
+  });
+});
 
 // ─── Health Check Route ───────────────────────────────────────────────────────
 app.get("/health", async (request, reply) => {

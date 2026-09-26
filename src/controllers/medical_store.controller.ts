@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import medicalStoreService from "../services/medical_store.service";
 import { validatePhoneNumber, validateString } from "../utils/validation.util";
+import { broadcastRealtimeEvent } from "../utils/realtime";
 
 class MedicalStoreController {
 
@@ -48,6 +49,13 @@ class MedicalStoreController {
             };
 
             const store = await medicalStoreService.createStore(body);
+
+            broadcastRealtimeEvent(client_id, {
+                type: "DATA_CHANGED",
+                entity: "store",
+                action: "create",
+                storeId: store?.id,
+            });
 
             return reply.code(201).send({
                 success: true,
@@ -166,6 +174,13 @@ class MedicalStoreController {
                 });
             }
 
+            broadcastRealtimeEvent(payload.client_id || (request.params as any).client_id, {
+                type: "DATA_CHANGED",
+                entity: "store",
+                action: "update",
+                storeId: id,
+            });
+
             return reply.send({
                 success: true,
                 message: "Medical store updated successfully",
@@ -194,6 +209,13 @@ class MedicalStoreController {
             }
 
             await medicalStoreService.deleteStore(id, client_id);
+
+            broadcastRealtimeEvent(client_id, {
+                type: "DATA_CHANGED",
+                entity: "store",
+                action: "delete",
+                storeId: id,
+            });
 
             return reply.send({
                 success: true,
