@@ -401,9 +401,10 @@ class InvoiceService {
                 }
             }
 
+            // Soft-delete: update status to Cancelled and set deleted_at (record is preserved in database!)
+            await invoice.update({ status: "Cancelled" });
             await InvoiceModel.destroy({
-                where: whereCondition,
-                force: true // Hard delete so sequence number is completely freed!
+                where: whereCondition
             });
         }
 
