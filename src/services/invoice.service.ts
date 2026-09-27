@@ -74,20 +74,33 @@ async function getSharedBrowser() {
 class InvoiceService {
     // CREATE INVOICE
     async createInvoice(data: any) {
-        // Store the company-wise sequence once; the global id is independent.
-        // Use raw SQL to include soft-deleted records and prevent unique constraint collisions
+        const clientId = data.client_id;
+
+        // Sequence scoped to client and active records:
         const [storeMaxRow]: any = await sequelize.query(
-            'SELECT COALESCE(MAX(company_invoice_number), 0) AS max_store_cin FROM invoices WHERE medical_store_id = :storeId',
-            { replacements: { storeId: data.medical_store_id } }
+            'SELECT COALESCE(MAX(company_invoice_number), 0) AS max_store_cin FROM invoices WHERE medical_store_id = :storeId AND deleted_at IS NULL' +
+            (clientId ? ' AND client_id = :clientId' : ''),
+            { replacements: { storeId: data.medical_store_id, clientId } }
         );
         const maxStoreCin = Number(storeMaxRow?.[0]?.max_store_cin || 0);
         const companyInvoiceNumber = Number(data.company_invoice_number) || (maxStoreCin + 1);
 
         const [globalMaxRow]: any = await sequelize.query(
-            'SELECT COALESCE(MAX(global_bill_id), 0) AS max_gbid FROM invoices'
+            'SELECT COALESCE(MAX(global_bill_id), 0) AS max_gbid FROM invoices WHERE deleted_at IS NULL' +
+            (clientId ? ' AND client_id = :clientId' : ''),
+            { replacements: { clientId } }
         );
         const maxGbid = Number(globalMaxRow?.[0]?.max_gbid || 0);
-        const globalBillId = Math.max(Number(data.global_bill_id) || 0, maxGbid + 1);
+
+        // If client provided a requested global_bill_id, check if it's available, otherwise maxGbid + 1
+        let candidateGbid = Number(data.global_bill_id) || (maxGbid + 1);
+        const existingActiveInvoice = await InvoiceModel.findOne({
+            where: {
+                ...(clientId ? { client_id: clientId } : {}),
+                global_bill_id: candidateGbid,
+            }
+        });
+        const globalBillId = existingActiveInvoice ? (maxGbid + 1) : candidateGbid;
         const invoiceNumber = data.invoice_number || `#${companyInvoiceNumber}`;
 
         // Calculate totals
@@ -389,7 +402,8 @@ class InvoiceService {
             }
 
             await InvoiceModel.destroy({
-                where: whereCondition
+                where: whereCondition,
+                force: true // Hard delete so sequence number is completely freed!
             });
         }
 
