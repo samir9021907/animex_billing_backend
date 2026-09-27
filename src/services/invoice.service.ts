@@ -134,12 +134,18 @@ class InvoiceService {
         const grandTotal = Math.round(totalBeforeRound);
         const roundOff = Number((grandTotal - totalBeforeRound).toFixed(2));
 
-        const receivedAmount = Number(data.received_amount || 0);
-        const balanceDue = Math.max(0, grandTotal - receivedAmount);
+        let receivedAmount = Number(data.received_amount || 0);
+        let balanceDue = Math.max(0, grandTotal - receivedAmount);
 
-        // Determine status automatically if not provided
+        // Indian Invoicing Round-off Rule:
+        // If balanceDue is <= 1.0 (round-off fraction e.g. 0.20, 0.50) or if received >= totalBeforeRound - 1.0:
+        // Mark as 100% Paid, balance_due = 0, and received_amount = grandTotal.
         let status = data.status || "Pending";
-        if (data.status === undefined) {
+        if ((balanceDue <= 1.0 && receivedAmount > 0) || (receivedAmount >= totalBeforeRound - 1.0 && receivedAmount > 0)) {
+            balanceDue = 0.00;
+            receivedAmount = grandTotal;
+            status = "Paid";
+        } else if (data.status === undefined || data.status === "Partially Paid") {
             if (balanceDue === 0) {
                 status = "Paid";
             } else if (receivedAmount > 0) {
@@ -149,13 +155,24 @@ class InvoiceService {
             }
         }
 
+        let invoiceDate = new Date();
+        if (data.date) {
+            if (typeof data.date === "string" && /^\d{2}-\d{2}-\d{4}$/.test(data.date.trim())) {
+                const [d, m, y] = data.date.trim().split("-");
+                invoiceDate = new Date(`${y}-${m}-${d}T00:00:00.000Z`);
+            } else {
+                const parsed = new Date(data.date);
+                invoiceDate = isNaN(parsed.getTime()) ? new Date() : parsed;
+            }
+        }
+
         const invoice = await InvoiceModel.create({
             client_id: data.client_id,
             medical_store_id: data.medical_store_id,
             invoice_number: invoiceNumber,
             company_invoice_number: companyInvoiceNumber,
             global_bill_id: globalBillId,
-            date: data.date || new Date(),
+            date: invoiceDate,
             items,
             subtotal: Number(subtotal.toFixed(2)),
             discount: Number(discount.toFixed(2)),
@@ -174,15 +191,19 @@ class InvoiceService {
         // Reduce product stock in database
         for (const item of items) {
             const qty = Number(item.quantity || 0);
-            const title = item.product_title || item.itemName || item.name;
-            if (qty > 0 && title) {
+            const title = (item.product_title || item.itemName || item.name || '').trim();
+            const prodId = item.product_id || item.productId;
+            if (qty > 0 && (title || prodId)) {
+                const whereConditions: any[] = [];
+                if (prodId) whereConditions.push({ id: prodId });
+                if (title) {
+                    whereConditions.push({ product_title: title });
+                    whereConditions.push(sequelize.where(sequelize.fn('lower', sequelize.fn('trim', sequelize.col('product_title'))), title.toLowerCase()));
+                }
                 const product = await MedicalProductModel.findOne({
                     where: {
                         client_id: data.client_id,
-                        [Op.or]: [
-                            { product_title: title },
-                            sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
-                        ]
+                        [Op.or]: whereConditions
                     }
                 });
                 if (product) {
@@ -287,11 +308,15 @@ class InvoiceService {
         const grandTotal = Math.round(totalBeforeRound);
         const roundOff = Number((grandTotal - totalBeforeRound).toFixed(2));
 
-        const receivedAmount = data.received_amount !== undefined ? Number(data.received_amount) : invoice.received_amount;
-        const balanceDue = Math.max(0, grandTotal - receivedAmount);
+        let receivedAmount = data.received_amount !== undefined ? Number(data.received_amount) : Number(invoice.received_amount || 0);
+        let balanceDue = Math.max(0, grandTotal - receivedAmount);
 
         let status = data.status || invoice.status;
-        if (data.status === undefined && data.received_amount !== undefined) {
+        if ((balanceDue <= 1.0 && receivedAmount > 0) || (receivedAmount >= totalBeforeRound - 1.0 && receivedAmount > 0)) {
+            balanceDue = 0.00;
+            receivedAmount = grandTotal;
+            status = "Paid";
+        } else if (data.status === undefined && data.received_amount !== undefined) {
             if (balanceDue === 0) {
                 status = "Paid";
             } else if (receivedAmount > 0) {
@@ -301,10 +326,21 @@ class InvoiceService {
             }
         }
 
+        let invoiceDate = invoice.date;
+        if (data.date) {
+            if (typeof data.date === "string" && /^\d{2}-\d{2}-\d{4}$/.test(data.date.trim())) {
+                const [d, m, y] = data.date.trim().split("-");
+                invoiceDate = new Date(`${y}-${m}-${d}T00:00:00.000Z`);
+            } else {
+                const parsed = new Date(data.date);
+                invoiceDate = isNaN(parsed.getTime()) ? invoice.date : parsed;
+            }
+        }
+
         await InvoiceModel.update(
             {
                 invoice_number: data.invoice_number || invoice.invoice_number,
-                date: data.date || invoice.date,
+                date: invoiceDate,
                 items,
                 subtotal: Number(subtotal.toFixed(2)),
                 discount: Number(discount.toFixed(2)),
@@ -330,15 +366,19 @@ class InvoiceService {
             // 1. Add back old items stock
             for (const item of oldItems) {
                 const qty = Number(item.quantity || 0);
-                const title = item.product_title || item.itemName || item.name;
-                if (qty > 0 && title) {
+                const title = (item.product_title || item.itemName || item.name || '').trim();
+                const prodId = item.product_id || item.productId;
+                if (qty > 0 && (title || prodId)) {
+                    const whereConditions: any[] = [];
+                    if (prodId) whereConditions.push({ id: prodId });
+                    if (title) {
+                        whereConditions.push({ product_title: title });
+                        whereConditions.push(sequelize.where(sequelize.fn('lower', sequelize.fn('trim', sequelize.col('product_title'))), title.toLowerCase()));
+                    }
                     const product = await MedicalProductModel.findOne({
                         where: {
                             client_id: invoice.client_id,
-                            [Op.or]: [
-                                { product_title: title },
-                                sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
-                            ]
+                            [Op.or]: whereConditions
                         }
                     });
                     if (product) {
@@ -349,15 +389,19 @@ class InvoiceService {
             // 2. Deduct new items stock
             for (const item of items) {
                 const qty = Number(item.quantity || 0);
-                const title = item.product_title || item.itemName || item.name;
-                if (qty > 0 && title) {
+                const title = (item.product_title || item.itemName || item.name || '').trim();
+                const prodId = item.product_id || item.productId;
+                if (qty > 0 && (title || prodId)) {
+                    const whereConditions: any[] = [];
+                    if (prodId) whereConditions.push({ id: prodId });
+                    if (title) {
+                        whereConditions.push({ product_title: title });
+                        whereConditions.push(sequelize.where(sequelize.fn('lower', sequelize.fn('trim', sequelize.col('product_title'))), title.toLowerCase()));
+                    }
                     const product = await MedicalProductModel.findOne({
                         where: {
                             client_id: invoice.client_id,
-                            [Op.or]: [
-                                { product_title: title },
-                                sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
-                            ]
+                            [Op.or]: whereConditions
                         }
                     });
                     if (product) {
@@ -383,15 +427,19 @@ class InvoiceService {
             const items = Array.isArray(invoice.items) ? invoice.items : [];
             for (const item of items) {
                 const qty = Number(item.quantity || 0);
-                const title = item.product_title || item.itemName || item.name;
-                if (qty > 0 && title) {
+                const title = (item.product_title || item.itemName || item.name || '').trim();
+                const prodId = item.product_id || item.productId;
+                if (qty > 0 && (title || prodId)) {
+                    const whereConditions: any[] = [];
+                    if (prodId) whereConditions.push({ id: prodId });
+                    if (title) {
+                        whereConditions.push({ product_title: title });
+                        whereConditions.push(sequelize.where(sequelize.fn('lower', sequelize.fn('trim', sequelize.col('product_title'))), title.toLowerCase()));
+                    }
                     const product = await MedicalProductModel.findOne({
                         where: {
                             client_id: invoice.client_id,
-                            [Op.or]: [
-                                { product_title: title },
-                                sequelize.where(sequelize.fn('lower', sequelize.col('product_title')), title.toLowerCase())
-                            ]
+                            [Op.or]: whereConditions
                         }
                     });
                     if (product) {
