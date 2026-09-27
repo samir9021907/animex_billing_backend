@@ -113,10 +113,14 @@ class InvoiceController {
                 data: invoice
             });
         } catch (error: any) {
+            let errorMsg = error.message || String(error);
+            if (error.errors && Array.isArray(error.errors)) {
+                errorMsg = error.errors.map((e: any) => `${e.path || e.type}: ${e.message}`).join(', ');
+            }
             return reply.code(500).send({
                 success: false,
                 message: "Error creating invoice",
-                error: error.message || error
+                error: errorMsg
             });
         }
     }
