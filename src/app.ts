@@ -91,10 +91,20 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log("Database connected successfully.");
 
-    // Auto-migrate: ensure customer_type column exists on live database
+    // Auto-migrate: ensure database schema and constraints are up to date
     try {
       await sequelize.query("ALTER TABLE medical_stores ADD COLUMN IF NOT EXISTS customer_type VARCHAR(50) DEFAULT 'store';");
       console.log("Auto-migration: customer_type column verified.");
+
+      // Drop unique constraint on global_bill_id so sequential invoice numbers can be reused after soft-delete
+      await sequelize.query("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_global_bill_id_key;");
+      await sequelize.query("DROP INDEX IF EXISTS invoices_global_bill_id_key;");
+      await sequelize.query("DROP INDEX IF EXISTS invoices_global_bill_id;");
+      console.log("Auto-migration: global_bill_id unique constraint removed.");
+
+      // Fix legacy invoices with <= 1 rupee round-off difference
+      await sequelize.query("UPDATE invoices SET status = 'Paid', balance_due = 0.00, received_amount = grand_total WHERE balance_due <= 1.0 AND status = 'Partially Paid';");
+      console.log("Auto-migration: legacy invoices updated to Paid.");
     } catch (err: any) {
       console.warn("Auto-migration notice:", err.message);
     }
