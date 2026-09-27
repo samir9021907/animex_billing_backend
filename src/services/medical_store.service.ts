@@ -5,6 +5,8 @@ class MedicalStoreService {
 
     // CREATE
     async createStore(data: any) {
+        const customerType = (data.customer_type === 'customer' || data.customerType === 'customer') ? 'customer' : 'store';
+
         if (data.client_id && data.firm_name) {
             const existing = await MedicalStoreModel.findOne({
                 where: {
@@ -15,6 +17,9 @@ class MedicalStoreService {
                 }
             });
             if (existing) {
+                if (existing.customer_type !== customerType) {
+                    await existing.update({ customer_type: customerType });
+                }
                 return existing;
             }
         }
@@ -27,6 +32,7 @@ class MedicalStoreService {
             district: data.district,
             address: data.address,
             status: data.status !== undefined ? (data.status === "true" || data.status === true) : true,
+            customer_type: customerType,
         });
 
         return store;
@@ -89,8 +95,8 @@ class MedicalStoreService {
         if (data.status !== undefined) {
             updateData.status = data.status === "true" || data.status === true;
         }
-        if (data.customer_type !== undefined) {
-            updateData.customer_type = data.customer_type;
+        if (data.customer_type !== undefined || data.customerType !== undefined) {
+            updateData.customer_type = (data.customer_type === 'customer' || data.customerType === 'customer') ? 'customer' : 'store';
         }
 
         await MedicalStoreModel.update(updateData, {
