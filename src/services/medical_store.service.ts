@@ -5,20 +5,30 @@ class MedicalStoreService {
 
     // CREATE
     async createStore(data: any) {
+        const cleanName = data.firm_name ? String(data.firm_name).trim() : "";
+        if (!cleanName) {
+            throw new Error("Firm name is required");
+        }
         const customerType = (data.customer_type === 'customer' || data.customerType === 'customer') ? 'customer' : 'store';
 
-        if (data.client_id && data.firm_name) {
+        if (data.client_id) {
             const existing = await MedicalStoreModel.findOne({
                 where: {
                     client_id: data.client_id,
                     firm_name: {
-                        [Op.iLike]: data.firm_name.trim()
+                        [Op.iLike]: cleanName
                     }
                 }
             });
             if (existing) {
-                if (existing.customer_type !== customerType) {
-                    await existing.update({ customer_type: customerType });
+                const updates: any = {};
+                if (existing.customer_type !== customerType) updates.customer_type = customerType;
+                if (data.phone_number && existing.phone_number !== data.phone_number) updates.phone_number = data.phone_number;
+                if (data.address && existing.address !== data.address) updates.address = data.address;
+                if (data.district && existing.district !== data.district) updates.district = data.district;
+                if (data.contact_person_name && existing.contact_person_name !== data.contact_person_name) updates.contact_person_name = data.contact_person_name;
+                if (Object.keys(updates).length > 0) {
+                    await existing.update(updates);
                 }
                 return existing;
             }
@@ -26,7 +36,7 @@ class MedicalStoreService {
 
         const store = await MedicalStoreModel.create({
             client_id: data.client_id,
-            firm_name: data.firm_name ? data.firm_name.trim() : data.firm_name,
+            firm_name: cleanName,
             contact_person_name: data.contact_person_name ?? null,
             phone_number: data.phone_number,
             district: data.district,
@@ -67,7 +77,18 @@ class MedicalStoreService {
             order: [["created_at", "DESC"]],
         });
 
-        return stores;
+        // Guaranteed deduplication: never return two stores/customers with identical name
+        const seenNames = new Set<string>();
+        const uniqueStores: any[] = [];
+        for (const s of stores) {
+            const key = (s.firm_name || "").trim().toLowerCase();
+            if (key && !seenNames.has(key)) {
+                seenNames.add(key);
+                uniqueStores.push(s);
+            }
+        }
+
+        return uniqueStores;
     }
 
     // GET BY ID
