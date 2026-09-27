@@ -63,7 +63,6 @@ InvoiceModel.init(
         global_bill_id: {
             type: DataTypes.BIGINT,
             allowNull: true,
-            unique: true,
         },
         date: {
             type: DataTypes.DATE,
