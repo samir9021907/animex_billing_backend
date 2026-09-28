@@ -168,15 +168,17 @@ class MedicalProductService {
             type: QueryTypes.UPDATE
         });
 
-        // Also update the products table for redundancy/compatibility
-        const productsQuery = clientId
-            ? `UPDATE products SET quantity = :quantity, updated_at = NOW() WHERE id = :id AND client_id = :clientId`
-            : `UPDATE products SET quantity = :quantity, updated_at = NOW() WHERE id = :id`;
+        try {
+            // Also update the products table for redundancy/compatibility if it exists
+            const productsQuery = clientId
+                ? `UPDATE products SET quantity = :quantity, updated_at = NOW() WHERE id = :id AND client_id = :clientId`
+                : `UPDATE products SET quantity = :quantity, updated_at = NOW() WHERE id = :id`;
 
-        await sequelize.query(productsQuery, {
-            replacements: { id, quantity: Number(quantity), clientId },
-            type: QueryTypes.UPDATE
-        });
+            await sequelize.query(productsQuery, {
+                replacements: { id, quantity: Number(quantity), clientId },
+                type: QueryTypes.UPDATE
+            });
+        } catch {}
 
         return await this.getProductById(id, clientId);
     }

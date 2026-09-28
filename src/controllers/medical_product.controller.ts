@@ -57,14 +57,24 @@ class MedicalProductController {
                 return reply.code(400).send({ success: false, message: boxValidation.error });
             }
 
+            // 6. Validate Min Stock Alert
+            let minAlertVal = 50;
+            if (payload.min_stock_alert !== undefined) {
+                const alertValidation = validateNumber(payload.min_stock_alert, "Min Stock Alert (किमान साठा अलर्ट)", 0, 100000, false);
+                if (alertValidation.isValid) {
+                    minAlertVal = alertValidation.value ?? 50;
+                }
+            }
+
             const body = {
                 ...payload,
                 client_id: targetClientId,
                 product_title: titleValidation.value,
                 selling_price: priceValidation.value,
-                mrp: mrpValidation.value,
+                mrp: mrpValidation.value ?? 0,
                 quantity: qtyValidation.value,
                 box_capacity: boxValidation.value || 50,
+                min_stock_alert: minAlertVal,
                 unit: payload.unit ? String(payload.unit).trim() : "Ltr",
                 status: payload.status !== undefined ? (payload.status === "true" || payload.status === true) : true,
             };
@@ -185,6 +195,14 @@ class MedicalProductController {
                     return reply.code(400).send({ success: false, message: boxValidation.error });
                 }
                 updateBody.box_capacity = boxValidation.value;
+            }
+
+            if (payload.min_stock_alert !== undefined) {
+                const alertValidation = validateNumber(payload.min_stock_alert, "Min Stock Alert (किमान साठा अलर्ट)", 0, 100000, false);
+                if (!alertValidation.isValid) {
+                    return reply.code(400).send({ success: false, message: alertValidation.error });
+                }
+                updateBody.min_stock_alert = alertValidation.value;
             }
 
             if (payload.unit !== undefined) {

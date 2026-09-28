@@ -9,3 +9,5 @@ pnpm-debug.log*
 coverage
 src/image/uploads/*
 !src/image/uploads/.gitkeep
+.cache
+check_db.cjs
