@@ -151,10 +151,10 @@ class MedicalProductService {
         }
 
         await MedicalProductModel.update(updateData, {
-            where: data.client_id ? { id, client_id: data.client_id } : { id },
+            where: { id },
         });
 
-        return await this.getProductById(id, data.client_id);
+        return await this.getProductById(id);
     }
 
     // UPDATE QUANTITY VIA RAW SQL QUERY (As requested)
