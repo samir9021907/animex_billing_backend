@@ -79,7 +79,29 @@ app.get("/client/:client_id/realtime-stream", (request, reply) => {
 
 // ─── Health Check Route ───────────────────────────────────────────────────────
 app.get("/health", async (request, reply) => {
-  return reply.send({ message: "system is healthy" });
+  let dbHost = "unknown";
+  let dbName = "unknown";
+  let maskedUrl = "";
+  try {
+    const [info]: any = await sequelize.query("SELECT current_database() as db;");
+    dbName = info[0]?.db || "unknown";
+    const rawUrl = process.env.DATABASE_URL || process.env.DB_URL || "";
+    if (rawUrl) {
+      maskedUrl = rawUrl.replace(/:[^:@]+@/, ":***@");
+      const match = rawUrl.match(/@([^:/]+)/);
+      if (match) dbHost = match[1];
+    } else {
+      dbHost = process.env.DB_HOST || "ep-rough-sky-axiwu1ua-pooler.c-4.us-east-2.aws.neon.tech";
+    }
+  } catch (err: any) {
+    dbHost = `error: ${err.message}`;
+  }
+  return reply.send({
+    message: "system is healthy",
+    dbHost,
+    dbName,
+    maskedUrl
+  });
 });
 
 // ─── Server start ─────────────────────────────────────────────────────────────
