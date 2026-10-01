@@ -244,16 +244,17 @@ class MedicalProductController {
     async deleteProduct(request: FastifyRequest, reply: FastifyReply) {
         try {
             const { id, client_id } = (request.params as any) || {};
+            const { title } = (request.query as any) || {};
 
-            const product = await medicalProductService.getProductById(id, client_id);
-            if (!product) {
-                return reply.code(404).send({
-                    success: false,
-                    message: "Medical product not found",
+            if (id === 'all' && client_id) {
+                await medicalProductService.deleteAllProducts(client_id);
+                return reply.send({
+                    success: true,
+                    message: "All medical products deleted successfully",
                 });
             }
 
-            await medicalProductService.deleteProduct(id, client_id);
+            await medicalProductService.deleteProduct(id, client_id, title);
 
             return reply.send({
                 success: true,

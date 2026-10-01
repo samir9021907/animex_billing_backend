@@ -183,12 +183,36 @@ class MedicalProductService {
         return await this.getProductById(id, clientId);
     }
 
-    // DELETE
-    async deleteProduct(id: string, clientId?: string) {
-        await MedicalProductModel.destroy({
-            where: clientId ? { id, client_id: clientId } : { id },
-        });
+    // DELETE PRODUCT (BY UUID OR TITLE)
+    async deleteProduct(id: string, clientId?: string, title?: string) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+        if (id && uuidRegex.test(id)) {
+            await MedicalProductModel.destroy({
+                where: clientId ? { id, client_id: clientId } : { id },
+            });
+            return true;
+        }
+
+        const targetTitle = (title && title.trim()) ? title.trim() : ((id && !uuidRegex.test(id) && id !== 'all') ? id.trim() : '');
+        if (targetTitle) {
+            const whereCond: any = {
+                product_title: { [Op.iLike]: targetTitle }
+            };
+            if (clientId) whereCond.client_id = clientId;
+            await MedicalProductModel.destroy({ where: whereCond });
+            return true;
+        }
+
+        return false;
+    }
+
+    // DELETE ALL PRODUCTS FOR CLIENT
+    async deleteAllProducts(clientId: string) {
+        if (!clientId) return false;
+        await MedicalProductModel.destroy({
+            where: { client_id: clientId }
+        });
         return true;
     }
 }
