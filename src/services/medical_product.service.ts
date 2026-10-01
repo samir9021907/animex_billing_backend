@@ -183,14 +183,14 @@ class MedicalProductService {
         return await this.getProductById(id, clientId);
     }
 
-    // DELETE PRODUCT (BY UUID OR TITLE)
+    // DELETE PRODUCT (BY UUID OR TITLE) - SOFT DELETE (PRESERVED IN DATABASE)
     async deleteProduct(id: string, clientId?: string, title?: string) {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
         if (id && uuidRegex.test(id)) {
-            await MedicalProductModel.destroy({
-                where: clientId ? { id, client_id: clientId } : { id },
-            });
+            const whereCond: any = clientId ? { id, client_id: clientId } : { id };
+            await MedicalProductModel.update({ status: false }, { where: whereCond }).catch(() => {});
+            await MedicalProductModel.destroy({ where: whereCond }); // Paranoid soft-delete: sets deleted_at
             return true;
         }
 
@@ -200,16 +200,18 @@ class MedicalProductService {
                 product_title: { [Op.iLike]: targetTitle }
             };
             if (clientId) whereCond.client_id = clientId;
-            await MedicalProductModel.destroy({ where: whereCond });
+            await MedicalProductModel.update({ status: false }, { where: whereCond }).catch(() => {});
+            await MedicalProductModel.destroy({ where: whereCond }); // Paranoid soft-delete: sets deleted_at
             return true;
         }
 
         return false;
     }
 
-    // DELETE ALL PRODUCTS FOR CLIENT
+    // DELETE ALL PRODUCTS FOR CLIENT - SOFT DELETE
     async deleteAllProducts(clientId: string) {
         if (!clientId) return false;
+        await MedicalProductModel.update({ status: false }, { where: { client_id: clientId } }).catch(() => {});
         await MedicalProductModel.destroy({
             where: { client_id: clientId }
         });
