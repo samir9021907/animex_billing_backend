@@ -33,7 +33,7 @@ class MedicalProductService {
     async createProduct(data: any) {
         const categoryId = await this.resolveCategoryId(data.client_id, data.category_id, data.category_name || data.category);
 
-        // Check if product with same title already exists for this client (Idempotency)
+        // Check if product with same title already exists for this client (Idempotency / Re-activation)
         if (data.client_id && data.product_title) {
             const existing = await MedicalProductModel.findOne({
                 where: {
@@ -41,10 +41,14 @@ class MedicalProductService {
                     product_title: {
                         [Op.iLike]: data.product_title.trim()
                     }
-                }
+                },
+                paranoid: false
             });
 
             if (existing) {
+                if (existing.deleted_at) {
+                    await existing.restore();
+                }
                 await existing.update({
                     category_id: categoryId,
                     unit: data.unit || existing.unit,
@@ -53,7 +57,7 @@ class MedicalProductService {
                     quantity: data.quantity !== undefined ? Number(data.quantity) : existing.quantity,
                     box_capacity: data.box_capacity !== undefined ? Number(data.box_capacity) : existing.box_capacity,
                     min_stock_alert: data.min_stock_alert !== undefined ? Number(data.min_stock_alert) : existing.min_stock_alert,
-                    status: data.status !== undefined ? (data.status === "true" || data.status === true) : existing.status,
+                    status: true,
                 });
                 return await this.getProductById(existing.id, data.client_id);
             }
